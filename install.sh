@@ -48,34 +48,13 @@ install_deps() {
     apt-get install -y wget curl git build-essential jq bc systemd ufw net-tools at
 }
 
-download_binary() {
-    local url="$1"
-    local output="$2"
-    echo -e "${YELLOW}Downloading $output...${NC}"
-    if wget -q --show-progress -O "$output" "$url"; then
-        return 0
-    else
-        echo -e "${RED}Failed to download from $url${NC}"
-        return 1
-    fi
-}
-
 install_udp_custom() {
     mkdir -p /opt/opudp/{config,scripts,utils,users,logs}
     cd /opt/opudp
-    if [[ "$(uname -m)" == "x86_64" ]]; then
-        download_binary "https://github.com/http-custom/udp-custom/releases/download/v1.0.0/udp-custom-linux-amd64" udp-custom || \
-        download_binary "https://github.com/http-custom/udp-custom/releases/latest/download/udp-custom-linux-amd64" udp-custom
-        download_binary "https://github.com/http-custom/udp-custom/releases/download/v1.0.0/udpgw-linux-amd64" udpgw || \
-        download_binary "https://github.com/http-custom/udp-custom/releases/latest/download/udpgw-linux-amd64" udpgw
-    elif [[ "$(uname -m)" == "aarch64" ]]; then
-        download_binary "https://github.com/http-custom/udp-custom/releases/download/v1.0.0/udp-custom-linux-arm64" udp-custom || \
-        download_binary "https://github.com/http-custom/udp-custom/releases/latest/download/udp-custom-linux-arm64" udp-custom
-        download_binary "https://github.com/http-custom/udp-custom/releases/download/v1.0.0/udpgw-linux-arm64" udpgw || \
-        download_binary "https://github.com/http-custom/udp-custom/releases/latest/download/udpgw-linux-arm64" udpgw
-    else
-        echo -e "${RED}Unsupported architecture${NC}"; exit 1
-    fi
+    echo -e "${YELLOW}Downloading UDP Custom binary...${NC}"
+    wget -q --show-progress -O udp-custom 'https://raw.githubusercontent.com/http-custom/udp-custom/main/bin/udp-custom-linux-amd64'
+    echo -e "${YELLOW}Downloading UDP Gateway binary...${NC}"
+    wget -q --show-progress -O udpgw 'https://raw.githubusercontent.com/http-custom/udp-custom/main/module/udpgw'
     chmod +x udp-custom udpgw
     cd - >/dev/null
 }
@@ -202,7 +181,6 @@ EOF
 }
 
 create_other_scripts() {
-    # remove_user.sh
     cat > /opt/opudp/scripts/remove_user.sh << 'EOF'
 #!/bin/bash
 source /opt/opudp/utils/hwid_auth.sh
@@ -216,7 +194,6 @@ fi
 EOF
     chmod +x /opt/opudp/scripts/remove_user.sh
 
-    # list_users.sh
     cat > /opt/opudp/scripts/list_users.sh << 'EOF'
 #!/bin/bash
 source /opt/opudp/utils/hwid_auth.sh
@@ -224,7 +201,6 @@ list_users
 EOF
     chmod +x /opt/opudp/scripts/list_users.sh
 
-    # renew_user.sh
     cat > /opt/opudp/scripts/renew_user.sh << 'EOF'
 #!/bin/bash
 source /opt/opudp/utils/hwid_auth.sh
@@ -236,7 +212,6 @@ echo "✅ Renewed. New expiry: $(date -d "+$days days" '+%Y-%m-%d')"
 EOF
     chmod +x /opt/opudp/scripts/renew_user.sh
 
-    # block_user.sh
     cat > /opt/opudp/scripts/block_user.sh << 'EOF'
 #!/bin/bash
 source /opt/opudp/utils/hwid_auth.sh
@@ -253,7 +228,6 @@ fi
 EOF
     chmod +x /opt/opudp/scripts/block_user.sh
 
-    # user_info.sh
     cat > /opt/opudp/scripts/user_info.sh << 'EOF'
 #!/bin/bash
 source /opt/opudp/utils/hwid_auth.sh
@@ -279,7 +253,6 @@ echo "💸 Telecel Cash for contributions"
 EOF
     chmod +x /opt/opudp/scripts/user_info.sh
 
-    # service_control.sh
     cat > /opt/opudp/scripts/service_control.sh << 'EOF'
 #!/bin/bash
 echo "1) Start  2) Stop  3) Restart  4) Status"
@@ -293,7 +266,6 @@ esac
 EOF
     chmod +x /opt/opudp/scripts/service_control.sh
 
-    # dashboard.sh
     cat > /opt/opudp/scripts/dashboard.sh << 'EOF'
 #!/bin/bash
 while true; do
