@@ -49,7 +49,7 @@ install_deps() {
 }
 
 install_udp_custom() {
-    mkdir -p /opt/opudp/{config,scripts,utils,users,logs}
+    mkdir -p /opt/opudp/{scripts,utils,users,logs}
     cd /opt/opudp
     echo -e "${YELLOW}Downloading UDP Custom binary...${NC}"
     wget -q --show-progress -O udp-custom 'https://raw.githubusercontent.com/http-custom/udp-custom/main/bin/udp-custom-linux-amd64'
@@ -307,14 +307,17 @@ EOF
 }
 
 create_config() {
-    cat > /opt/opudp/config/config.json << EOF
+    # Place config.json directly in /opt/opudp/ (not in a subfolder)
+    cat > /opt/opudp/config.json << EOF
 {
     "listen": ":5680",
     "stream_buffer": 209715200,
     "receive_buffer": 209715200,
     "auth": {
         "mode": "exec",
-        "exec": "/opt/opudp/auth.sh"
+        "exec": {
+            "path": "/opt/opudp/auth.sh"
+        }
     },
     "udp_gateway": {
         "address": "127.0.0.1:7300",
@@ -335,7 +338,7 @@ After=network.target
 Type=simple
 User=root
 WorkingDirectory=/opt/opudp
-ExecStart=/opt/opudp/udp-custom -c /opt/opudp/config/config.json
+ExecStart=/opt/opudp/udp-custom server
 Restart=always
 RestartSec=3
 
@@ -377,7 +380,6 @@ start_services() {
         echo -e "${GREEN}✅ Services started successfully.${NC}"
     else
         echo -e "${RED}❌ Services failed to start. Check logs: journalctl -u opudp-custom${NC}"
-        # Show last few lines of the log to help debug
         journalctl -u opudp-custom --no-pager -n 20
         exit 1
     fi
