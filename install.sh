@@ -1,6 +1,6 @@
 #!/bin/bash
 # OPUDP_CUSTOM - UDP Custom with HWID Authentication
-# Repo: https://github.com/OfficialOnePesewa/OPUDP_CUSTOM
+# One-line installer: git clone https://github.com/OfficialOnePesewa/OPUDP_CUSTOM.git && cd OPUDP_CUSTOM && sudo bash install.sh
 
 set -e
 RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'; BLUE='\033[0;34m'; CYAN='\033[0;36m'; NC='\033[0m'
@@ -25,9 +25,12 @@ display_system_info() {
     echo -e "${BLUE}╔══════════════════════════════════════════════════════════════════╗${NC}"
     echo -e "${BLUE}║                         SYSTEM INFORMATION                       ║${NC}"
     echo -e "${BLUE}╠══════════════════════════════════════════════════════════════════╣${NC}"
-    if [ -f /etc/os-release ]; then . /etc/os-release; OS_NAME="$NAME"; OS_VERSION="$VERSION_ID"; else OS_NAME=$(uname -s); OS_VERSION=$(uname -r); fi
+    . /etc/os-release 2>/dev/null || true
+    OS_NAME="${NAME:-$(uname -s)}"
+    OS_VERSION="${VERSION_ID:-$(uname -r)}"
     echo -e "${GREEN}║ OS:${NC} $OS_NAME $OS_VERSION"
-    ARCH=$(uname -m); [[ "$ARCH" == "x86_64" ]] && echo -e "${GREEN}║ Architecture:${NC} 64-bit" || echo -e "${GREEN}║ Architecture:${NC} 32-bit"
+    ARCH=$(uname -m)
+    [[ "$ARCH" == "x86_64" ]] && echo -e "${GREEN}║ Architecture:${NC} 64-bit" || echo -e "${GREEN}║ Architecture:${NC} 32-bit"
     echo -e "${GREEN}║ System Time (GMT):${NC} $(date -u '+%Y-%m-%d %H:%M:%S GMT')"
     SERVER_IP=$(curl -s -4 icanhazip.com 2>/dev/null || curl -s -4 ifconfig.me 2>/dev/null)
     echo -e "${GREEN}║ Server IP:${NC} $SERVER_IP"
@@ -47,16 +50,27 @@ install_deps() {
 
 install_udp_custom() {
     mkdir -p /opt/opudp/{config,scripts,utils,users,logs}
+    cd /opt/opudp
     if [[ "$(uname -m)" == "x86_64" ]]; then
-        wget -q -O /opt/opudp/udp-custom "https://github.com/http-custom/udp-custom/releases/latest/download/udp-custom-linux-amd64"
-        wget -q -O /opt/opudp/udpgw "https://github.com/http-custom/udp-custom/releases/latest/download/udpgw-linux-amd64"
+        wget -q --show-progress -O udp-custom "https://github.com/http-custom/udp-custom/releases/latest/download/udp-custom-linux-amd64"
+        wget -q --show-progress -O udpgw "https://github.com/http-custom/udp-custom/releases/latest/download/udpgw-linux-amd64"
     elif [[ "$(uname -m)" == "aarch64" ]]; then
-        wget -q -O /opt/opudp/udp-custom "https://github.com/http-custom/udp-custom/releases/latest/download/udp-custom-linux-arm64"
-        wget -q -O /opt/opudp/udpgw "https://github.com/http-custom/udp-custom/releases/latest/download/udpgw-linux-arm64"
+        wget -q --show-progress -O udp-custom "https://github.com/http-custom/udp-custom/releases/latest/download/udp-custom-linux-arm64"
+        wget -q --show-progress -O udpgw "https://github.com/http-custom/udp-custom/releases/latest/download/udpgw-linux-arm64"
     else
         echo -e "${RED}Unsupported architecture${NC}"; exit 1
     fi
-    chmod +x /opt/opudp/udp-custom /opt/opudp/udpgw
+    chmod +x udp-custom udpgw
+    cd - >/dev/null
+}
+
+copy_scripts() {
+    # Get the directory where install.sh is located
+    SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    cp -r "$SCRIPT_DIR/scripts"/* /opt/opudp/scripts/
+    cp -r "$SCRIPT_DIR/utils"/* /opt/opudp/utils/
+    cp "$SCRIPT_DIR/auth.sh" /opt/opudp/auth.sh
+    chmod +x /opt/opudp/scripts/*.sh /opt/opudp/utils/*.sh /opt/opudp/auth.sh
 }
 
 create_config() {
@@ -76,13 +90,6 @@ create_config() {
     }
 }
 EOF
-}
-
-copy_scripts() {
-    cp -r scripts/* /opt/opudp/scripts/
-    cp -r utils/* /opt/opudp/utils/
-    cp auth.sh /opt/opudp/auth.sh
-    chmod +x /opt/opudp/scripts/*.sh /opt/opudp/utils/*.sh /opt/opudp/auth.sh
 }
 
 create_services() {
@@ -124,14 +131,21 @@ EOF
 }
 
 configure_firewall() {
-    ufw allow 5680/udp comment 'OPUDP_CUSTOM'
-    ufw allow 7300/udp comment 'OPUDP_GATEWAY'
-    ufw allow 40000:49999/udp comment 'OPUDP_PORT_RANGE'
-    ufw reload
+    ufw allow 5680/udp comment 'OPUDP_CUSTOM' 2>/dev/null || true
+    ufw allow 7300/udp comment 'OPUDP_GATEWAY' 2>/dev/null || true
+    ufw allow 40000:49999/udp comment 'OPUDP_PORT_RANGE' 2>/dev/null || true
+    ufw reload 2>/dev/null || true
 }
 
 start_services() {
     systemctl start opudp-custom opudpgw
+    sleep 2
+    if systemctl is-active --quiet opudp-custom && systemctl is-active --quiet opudpgw; then
+        echo -e "${GREEN}✅ Services started successfully.${NC}"
+    else
+        echo -e "${RED}❌ Services failed to start. Check logs: journalctl -u opudp-custom${NC}"
+        exit 1
+    fi
 }
 
 create_opudp_command() {
@@ -143,18 +157,28 @@ EOF
 }
 
 main() {
-    [[ $EUID -ne 0 ]] && { echo -e "${RED}Run as root${NC}"; exit 1; }
+    if [[ $EUID -ne 0 ]]; then
+        echo -e "${RED}❌ This script must be run as root!${NC}"
+        exit 1
+    fi
     display_header
     display_system_info
     install_deps
     install_udp_custom
-    create_config
     copy_scripts
+    create_config
     create_services
     configure_firewall
     start_services
     create_opudp_command
-    echo -e "${GREEN}Installation complete! Run 'opudp' to manage users.${NC}"
+    echo ""
+    echo -e "${GREEN}══════════════════════════════════════════════════════════════════${NC}"
+    echo -e "${GREEN}                     INSTALLATION COMPLETE!                        ${NC}"
+    echo -e "${GREEN}══════════════════════════════════════════════════════════════════${NC}"
+    echo ""
+    echo -e "👉 Run ${CYAN}opudp${NC} to open the dashboard and create HWID‑bound users."
+    echo -e "📱 Configuration string format: ${CYAN}YOUR_IP:5680@USERNAME:PASSWORD:HWID${NC}"
+    echo ""
 }
 
 main
