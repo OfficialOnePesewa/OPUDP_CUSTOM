@@ -335,7 +335,7 @@ After=network.target
 Type=simple
 User=root
 WorkingDirectory=/opt/opudp
-ExecStart=/opt/opudp/udp-custom server
+ExecStart=/opt/opudp/udp-custom -c /opt/opudp/config/config.json
 Restart=always
 RestartSec=3
 
@@ -377,6 +377,8 @@ start_services() {
         echo -e "${GREEN}✅ Services started successfully.${NC}"
     else
         echo -e "${RED}❌ Services failed to start. Check logs: journalctl -u opudp-custom${NC}"
+        # Show last few lines of the log to help debug
+        journalctl -u opudp-custom --no-pager -n 20
         exit 1
     fi
 }
