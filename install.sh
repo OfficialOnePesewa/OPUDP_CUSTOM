@@ -49,10 +49,11 @@ install_deps() {
 }
 
 install_udp_custom() {
-    mkdir -p /opt/opudp/{scripts,utils,users,logs}
+    mkdir -p /opt/opudp/{config,scripts,utils,users,logs}
     cd /opt/opudp
     echo -e "${YELLOW}Downloading UDP Custom binary...${NC}"
-    wget -q --show-progress -O udp-custom 'https://raw.githubusercontent.com/http-custom/udp-custom/main/bin/udp-custom-linux-amd64'
+    # Fixed URL - using raw/refs/heads/main/ path for direct download
+    wget -q --show-progress -O udp-custom 'https://github.com/http-custom/udp-custom/raw/refs/heads/main/bin/udp-custom-linux-amd64'
     echo -e "${YELLOW}Downloading UDP Gateway binary...${NC}"
     wget -q --show-progress -O udpgw 'https://raw.githubusercontent.com/http-custom/udp-custom/main/module/udpgw'
     chmod +x udp-custom udpgw
@@ -307,17 +308,14 @@ EOF
 }
 
 create_config() {
-    # Place config.json directly in /opt/opudp/ (not in a subfolder)
-    cat > /opt/opudp/config.json << EOF
+    cat > /opt/opudp/config/config.json << EOF
 {
     "listen": ":5680",
     "stream_buffer": 209715200,
     "receive_buffer": 209715200,
     "auth": {
         "mode": "exec",
-        "exec": {
-            "path": "/opt/opudp/auth.sh"
-        }
+        "exec": "/opt/opudp/auth.sh"
     },
     "udp_gateway": {
         "address": "127.0.0.1:7300",
@@ -380,7 +378,6 @@ start_services() {
         echo -e "${GREEN}✅ Services started successfully.${NC}"
     else
         echo -e "${RED}❌ Services failed to start. Check logs: journalctl -u opudp-custom${NC}"
-        journalctl -u opudp-custom --no-pager -n 20
         exit 1
     fi
 }
