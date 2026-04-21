@@ -1,7 +1,6 @@
 #!/bin/bash
-# OPUDP_CUSTOM - UDP Custom Server with HWID Authentication
-# Repo: https://github.com/OfficialOnePesewa/OPUDP_CUSTOM
-# One-liner: wget -O install.sh https://raw.githubusercontent.com/OfficialOnePesewa/OPUDP_CUSTOM/main/install.sh && chmod +x install.sh && bash install.sh
+# OPUDP_CUSTOM - UDP Custom with HWID Authentication
+# One‑line installer: bash <(curl -fsSL https://raw.githubusercontent.com/OfficialOnePesewa/OPUDP_CUSTOM/main/install.sh)
 
 set -e
 RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'; BLUE='\033[0;34m'; CYAN='\033[0;36m'; NC='\033[0m'
@@ -59,9 +58,9 @@ install_udp_custom() {
     mkdir -p /opt/opudp/{config,scripts,utils,users,logs}
     cd /opt/opudp
     echo -e "${YELLOW}Downloading UDP Custom binary...${NC}"
-    wget -q --show-progress -O udp-custom 'https://github.com/http-custom/udp-custom/raw/refs/heads/main/bin/udp-custom-linux-amd64'
+    wget -q --show-progress -O udp-custom 'https://raw.githubusercontent.com/http-custom/udp-custom/main/bin/udp-custom-linux-amd64'
     echo -e "${YELLOW}Downloading UDP Gateway binary...${NC}"
-    wget -q --show-progress -O udpgw 'https://github.com/http-custom/udp-custom/raw/refs/heads/main/module/udpgw'
+    wget -q --show-progress -O udpgw 'https://raw.githubusercontent.com/http-custom/udp-custom/main/module/udpgw'
     chmod +x udp-custom udpgw
     cd - >/dev/null
 }
